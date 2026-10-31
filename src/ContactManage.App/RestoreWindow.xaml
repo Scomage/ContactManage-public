@@ -1,0 +1,49 @@
+<Window x:Class="ContactManage.App.RestoreWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ContactManage - Restore from backup" Height="560" Width="920" MinHeight="380" MinWidth="620"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="Restore from backup"/>
+            <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="Every time you replace a folder, its previous contents are saved first. Pick one below to put those contacts back. The folder's current contents are backed up again before they are replaced, so a restore can itself be undone."/>
+        </StackPanel>
+
+        <ListView Grid.Row="1" x:Name="BackupList" AutomationProperties.AutomationId="BackupList" SelectionMode="Single" SelectionChanged="BackupList_SelectionChanged">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Saved" Width="150" DisplayMemberBinding="{Binding When}"/>
+                    <GridViewColumn Header="Folder" Width="300" DisplayMemberBinding="{Binding Label}"/>
+                    <GridViewColumn Header="Contacts" Width="80">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Count}" TextAlignment="Right" Margin="0,0,10,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Goes back to" Width="240" DisplayMemberBinding="{Binding Match}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <DockPanel Grid.Row="2" Margin="0,10,0,0">
+            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Text="Restore into: " />
+            <ComboBox x:Name="TargetBox" AutomationProperties.AutomationId="TargetBox"/>
+        </DockPanel>
+
+        <DockPanel Grid.Row="3" Margin="0,12,0,0" LastChildFill="False">
+            <Button DockPanel.Dock="Left" Content="Open backup folder" Padding="8,4" Click="OpenFolder_Click"/>
+            <Button AutomationProperties.AutomationId="CloseButton" DockPanel.Dock="Right" Content="Close" Width="90" Padding="0,4" IsCancel="True"/>
+            <Button AutomationProperties.AutomationId="RestoreButton" x:Name="RestoreButton" DockPanel.Dock="Right" Content="Restore" Width="90" Padding="0,4" Margin="0,0,8,0"
+                    IsEnabled="False" Click="Restore_Click"/>
+        </DockPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,58 @@
+<Window x:Class="ContactManage.App.DestinationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ContactManage - Save the merged contacts" SizeToContent="Height" Width="680"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <StackPanel Margin="16">
+        <TextBlock x:Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,12"
+                   Text="Choose where the merged list goes."/>
+
+        <RadioButton x:Name="ReplaceRadio" GroupName="dest" Content="Replace the contents of the selected folders"/>
+        <ListBox x:Name="ReplaceList" Margin="24,6,0,12" MaxHeight="130" IsEnabled="{Binding IsChecked, ElementName=ReplaceRadio}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Text}"/>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <RadioButton x:Name="NewRadio" GroupName="dest" Content="Create a new folder in an existing account"/>
+        <Grid Margin="24,6,0,12" IsEnabled="{Binding IsChecked, ElementName=NewRadio}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Text="Account" VerticalAlignment="Center" Margin="0,0,10,6"/>
+            <ComboBox x:Name="AccountBox" Grid.Column="1" Margin="0,0,0,6"/>
+            <TextBlock Text="Folder name" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox x:Name="NameBox" Grid.Row="1" Grid.Column="1" Text="Merged contacts"/>
+        </Grid>
+
+        <RadioButton x:Name="ExistingRadio" GroupName="dest" Content="Write into any existing folder (replaces what is in it)"/>
+        <StackPanel Margin="24,6,0,12" IsEnabled="{Binding IsChecked, ElementName=ExistingRadio}">
+            <ComboBox x:Name="ExistingBox" DisplayMemberPath="Text"/>
+            <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="Everything now in that folder is replaced by the merged list. A backup of it is saved first."/>
+        </StackPanel>
+
+        <RadioButton x:Name="FileRadio" GroupName="dest" Content="Save to a vCard file on this computer"/>
+        <DockPanel Margin="24,6,0,12" IsEnabled="{Binding IsChecked, ElementName=FileRadio}">
+            <Button DockPanel.Dock="Right" Content="Browse..." Width="80" Margin="8,0,0,0" Click="Browse_Click"/>
+            <TextBox x:Name="PathBox"/>
+        </DockPanel>
+
+        <CheckBox x:Name="LogCheck" AutomationProperties.AutomationId="LogCheck" Margin="0,0,0,12"
+                  Content="Also save a change log showing what happened to each contact"
+                  ToolTip="A text file with the names, emails and phones of the contacts involved. Kept on this PC under ContactManage\Logs."/>
+        <TextBlock x:Name="ErrorText" Foreground="#B00020" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,8"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button AutomationProperties.AutomationId="SaveButton" Content="Save" Width="90" Padding="0,4" IsDefault="True" Margin="0,0,8,0" Click="Save_Click"/>
+            <Button AutomationProperties.AutomationId="BackButton" Content="Back" Width="90" Padding="0,4" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -1,0 +1,30 @@
+<Project>
+
+  <!--
+    Every `dotnet test` of this project collects code coverage and builds an HTML report from it:
+      coverage-report/index.html   (open this one)
+    The report is built by scripts/coverage-report.ps1 (ReportGenerator, a local tool in .config/dotnet-tools.json).
+    Set -p:CoverageReport=false to skip it. MSBuild skips this step when a test fails; run the script by hand then.
+    The Visual Studio Test Explorer does not run MSBuild's test target, so it produces no report.
+  -->
+  <PropertyGroup>
+    <CoverageReport Condition="'$(CoverageReport)' == ''">true</CoverageReport>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</RepoRoot>
+    <VSTestCollect Condition="'$(CoverageReport)' == 'true'">XPlat Code Coverage</VSTestCollect>
+    <VSTestResultsDirectory Condition="'$(VSTestResultsDirectory)' == ''">$(RepoRoot)TestResults</VSTestResultsDirectory>
+  </PropertyGroup>
+
+  <!-- Start from nothing, so the report shows this run and not a mix of old ones. -->
+  <Target Name="CleanCoverageResults" BeforeTargets="VSTest" Condition="'$(CoverageReport)' == 'true'">
+    <ItemGroup>
+      <OldCoverage Include="$(VSTestResultsDirectory)\**\coverage.cobertura.xml" />
+    </ItemGroup>
+    <Delete Files="@(OldCoverage)" ContinueOnError="true" />
+  </Target>
+
+  <Target Name="GenerateCoverageReport" AfterTargets="VSTest" Condition="'$(CoverageReport)' == 'true'">
+    <Exec WorkingDirectory="$(RepoRoot)" ContinueOnError="true" StandardOutputImportance="high"
+          Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(RepoRoot)scripts\coverage-report.ps1&quot;" />
+  </Target>
+
+</Project>

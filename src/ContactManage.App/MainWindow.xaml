@@ -1,0 +1,106 @@
+﻿<Window x:Class="ContactManage.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ContactManage" Height="620" Width="1060" MinHeight="360" MinWidth="640">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <Grid x:Name="Root" Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- The buttons sit on their own row: at the larger text size they no longer fit beside the title. -->
+        <StackPanel Grid.Row="0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <RadioButton AutomationProperties.AutomationId="RealModeRadio" Content="My contacts" GroupName="mode" Margin="0,0,14,0" IsChecked="{Binding UseReal}"/>
+                    <RadioButton AutomationProperties.AutomationId="DemoModeRadio" Content="Demo (sample data)" GroupName="mode" IsChecked="{Binding UseDemo}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding ClientText}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <Button AutomationProperties.AutomationId="SwitchSourceButton" Content="Switch source" Padding="8,2"
+                        Margin="0,0,8,0" Click="SwitchSource_Click" ToolTip="Choose again between an online account, a mail program on this PC, and the demo."/>
+                <Button AutomationProperties.AutomationId="ForgetButton" Content="Forget saved passwords" Padding="8,2"
+                        Margin="0,0,8,0" Click="ForgetPasswords_Click"/>
+                <Button AutomationProperties.AutomationId="RestoreBackupButton" Content="Restore from backup" Padding="8,2"
+                        Margin="0,0,8,0" Click="Restore_Click" IsEnabled="{Binding UseReal}"/>
+                <Button AutomationProperties.AutomationId="AddGoogleButton" Content="Add Google account" Padding="8,2"
+                        Click="AddGoogle_Click" IsEnabled="{Binding UseReal}"/>
+            </StackPanel>
+        </StackPanel>
+        <TextBlock Grid.Row="1" Margin="0,4,0,10" Foreground="Gray" TextWrapping="Wrap"
+                   Text="{Binding HelpText}"/>
+
+        <ListView Grid.Row="2" AutomationProperties.AutomationId="FolderList" ItemsSource="{Binding FolderView}">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="36">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding Folder.IsReadable}"
+                                          Visibility="{Binding Folder.HasCheckbox, Converter={StaticResource BoolToVis}}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Folder" Width="230">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Only a Gmail main list with labels under it shows the arrow; the others keep the space so names line up. -->
+                                    <Button AutomationProperties.AutomationId="ExpanderButton" Content="{Binding Glyph}" Click="Expander_Click"
+                                            Width="18" Padding="0" Margin="0,0,2,0" BorderThickness="0" Background="Transparent" Focusable="False">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Visibility" Value="Hidden"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasChildren}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <TextBlock Text="{Binding Folder.ListName}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Contacts" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Folder.CountText}" TextAlignment="Right" Margin="0,0,10,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Account" Width="180" DisplayMemberBinding="{Binding Folder.AccountName}"/>
+                    <GridViewColumn Header="Server" Width="210" DisplayMemberBinding="{Binding Folder.ServerName}"/>
+                    <GridViewColumn Header="Path" Width="170" DisplayMemberBinding="{Binding Folder.ShownPath}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <DockPanel Grid.Row="3" Margin="0,12,0,0" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" AutomationProperties.AutomationId="StatusText" Text="{Binding StatusText}"/>
+            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Margin="16,0,0,0">
+                <Hyperlink AutomationProperties.AutomationId="OpenLogsLink" Click="OpenLogs_Click" ToolTip="Opens the folder holding the change logs in File Explorer.">Open log folder</Hyperlink>
+            </TextBlock>
+            <!-- Docked right, so the first element is the rightmost: reads Refresh, Next, Exit. -->
+            <Button AutomationProperties.AutomationId="ExitButton" DockPanel.Dock="Right" Content="Exit" Width="90" Padding="0,4"
+                    Click="Exit_Click"/>
+            <Button AutomationProperties.AutomationId="NextButton" DockPanel.Dock="Right" Content="Next" Width="90" Padding="0,4" Margin="0,0,8,0"
+                    IsEnabled="{Binding CanContinue}" Click="Next_Click"/>
+            <Button AutomationProperties.AutomationId="RefreshButton" DockPanel.Dock="Right" Content="Refresh" Width="90" Padding="0,4" Margin="0,0,8,0"
+                    Click="Refresh_Click"/>
+        </DockPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    # The adapters and the WPF app are Windows-only, so build and test on Windows.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      # The unit test project collects coverage and builds coverage-report/ itself when the tests pass
+      # (tests/ContactManage.Tests/CoverageReport.targets).
+      - name: Test
+        run: >
+          dotnet test --configuration Release --no-build --filter "Category!=UI"
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory TestResults
+
+      # MSBuild skips the report step when a test fails, so build it here, where it is most wanted.
+      - name: Coverage report after a failure
+        if: failure()
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/coverage-report.ps1
+
+      - name: Coverage summary
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path coverage-report/SummaryGithub.md) {
+            Get-Content coverage-report/SummaryGithub.md | Add-Content $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ui-tests:
+    # Drives the real WPF windows in demo mode with FlaUI. Needs an interactive desktop session, which the
+    # hosted Windows runners provide. If it ever proves flaky there, remove this job; the tests still run locally.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: UI tests
+        run: >
+          dotnet test tests/ContactManage.UiTests --configuration Release --no-build
+          --logger "trx;LogFileName=ui-test-results.trx"
+          --results-directory TestResults
+
+      - name: Upload UI test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: TestResults/
+          if-no-files-found: ignore
+          retention-days: 14
