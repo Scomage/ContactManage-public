@@ -1,6 +1,7 @@
 <#
   Builds the installable package: dist\ContactManage-<version>-win-x64.zip
   The zip holds the self-contained app (no .NET needed on the target PC) plus Install.cmd / install.ps1 / uninstall.ps1.
+  A copy named ContactManage-win-x64.zip (no version) is written next to it; the release workflow attaches both.
   Run from anywhere:  powershell -File scripts\package.ps1 [-Version 1.0.0]
 #>
 param([string]$Version = "1.0.0")
@@ -24,4 +25,7 @@ Copy-Item (Join-Path $root "docs\QUICKSTART.md") (Join-Path $stage "README-first
 
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
 Remove-Item $stage -Recurse -Force
+
+# Same file under a name without the version, so .../releases/latest/download/ContactManage-win-x64.zip never changes.
+Copy-Item $zip (Join-Path $dist "ContactManage-win-x64.zip")
 Write-Host "Built $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"

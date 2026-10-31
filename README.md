@@ -64,6 +64,7 @@ Requires the .NET 9 SDK and Windows 10 or later. More in `docs/INSTALLATION.md`.
 | `docs/AOL.md` | AOL contacts over CardDAV with an app password: what the server allows, test results |
 | `docs/ICEWARP.md` | How IceWarp stores accounts and folders, and how the CardDAV server behaves |
 | `docs/QUICKSTART.md` | One-page install and setup for technical users |
+| `docs/ONBOARDING.md` | Checklist and message for giving the app and Gmail access to an outside user |
 | `docs/INSTALLATION.md` | Building, running, publishing and deploying to other PCs |
 | `docs/SECURITY.md` | Credential handling and data-safety rules |
 

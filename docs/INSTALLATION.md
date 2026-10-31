@@ -51,7 +51,7 @@ powershell -File scripts\package.ps1 -Version 1.0.1
 
 This writes `dist\ContactManage-1.0.1-win-x64.zip` (about 62 MB): the self-contained app (no .NET install needed on the target PC) plus `Install.cmd`, `install.ps1` and `uninstall.ps1`. On the target PC, unzip and double-click **Install.cmd**. The install is per user (no administrator rights): files go to `%LOCALAPPDATA%\Programs\ContactManage`, with a Start menu shortcut and an entry in Settings > Apps. Running it again over an old install updates it. User data in `%LOCALAPPDATA%\ContactManage` (backups, logs, settings) is never touched by install, update or uninstall.
 
-**From GitHub:** pushing a tag such as `v1.0.1` runs `.github/workflows/release.yml`, which tests, builds the zip and attaches it to a GitHub release. The zip is then on the Releases page.
+**From GitHub:** pushing a tag such as `v1.0.1` runs `.github/workflows/release.yml`, which tests, builds the zip and attaches it to a GitHub release. The release has the zip twice: with the version in its name and as `ContactManage-win-x64.zip`, so `.../releases/latest/download/ContactManage-win-x64.zip` is a link that never changes. The zip is then on the Releases page.
 
 Gmail sign-in needs the Google client settings file `%LOCALAPPDATA%\ContactManage\google-client.json` on each PC. It holds the OAuth client secret and is not part of the package or the repository; hand it to colleagues separately (see `GMAIL.md`).
 

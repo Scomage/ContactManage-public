@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag such as v1.0.0 to build the installable package and attach it to a GitHub release.
+# Push a tag such as v1.0.0 to build the installable package and attach it to a GitHub release (both dist/*.zip files: versioned and fixed name).
 on:
   push:
     tags: ["v*"]
