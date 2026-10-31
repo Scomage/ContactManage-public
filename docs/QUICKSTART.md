@@ -1,40 +1,25 @@
-# Quick install and setup (technical users)
+# ContactManage: install and first run
 
-For the full picture see `INSTALLATION.md`. This page is the shortest path to a working install.
+ContactManage merges your contact folders into one de-duplicated list and writes it back. This page is the shortest path to a working install. Download address: **https://contactmanage.scomage.com**
 
 ## What you need
 
 | | |
 | --- | --- |
-| OS | Windows 10 or 11, x64 |
-| Mail client | IceWarp Desktop Client, installed, run at least once, with a contact account added (IceWarp servers and AOL are read through it; Gmail is added inside ContactManage) |
-| Network | https access to the contact server (IceWarp WebDAV/CardDAV, for example `https://mail.example.com/webdav/`) |
-| To build | .NET 9 SDK (`dotnet --version` should print 9.x) |
-| To run a published build | Nothing else; it is self-contained |
+| PC | Windows 10 or 11, 64-bit. Nothing else to install: the app is self-contained. |
+| Contacts | **Gmail**, or a mail program already on this PC (IceWarp Desktop Client, with its IceWarp, AOL and Local Folders accounts). A mail program is not needed for Gmail. |
+| Network | https access to the contact server. |
+| Gmail only | The file `google-client.json` from whoever gave you the app, and your Gmail address added as a test user by them (see step 7 below). |
 
-The server address is read from IceWarp's own account list, so you never type it. You do need your normal login for each account the first time (user name is usually the full email address).
+For IceWarp the server address is read from the mail program's own account list, so you never type it. You do need your normal login for each account the first time (user name is usually the full email address).
 
-## Option A: install the package (no SDK on the target PC)
+## Install
 
-1. Download `ContactManage-<version>-win-x64.zip` from the repository's **Releases** page (https://github.com/Scomage/ContactManage-public/releases), or get it from whoever built it.
+1. Download **ContactManage-win-x64.zip** from https://contactmanage.scomage.com. The file name has no version in it; the same link always gives the newest release. (The same zip is on the project's Releases page: https://github.com/Scomage/ContactManage-public/releases/latest, where a copy also carries the version in its name.)
 2. Unzip it anywhere, then double-click **Install.cmd**. It installs for the current user only (no administrator rights) to `%LOCALAPPDATA%\Programs\ContactManage`, adds a Start menu shortcut and an entry in Settings > Apps.
-3. Start **ContactManage** from the Start menu. Installing a newer package over an old one updates it; your data in `%LOCALAPPDATA%\ContactManage` is kept.
+3. Start **ContactManage** from the Start menu. Installing a newer zip over an old one updates it; your data in `%LOCALAPPDATA%\ContactManage` is kept.
 
-The executable is not code-signed yet, so SmartScreen shows "Windows protected your PC". Choose **More info**, then **Run anyway**.
-
-To build the package yourself: `powershell -File scripts\package.ps1 -Version 1.0.1` writes `dist\ContactManage-1.0.1-win-x64.zip`. Pushing a tag such as `v1.0.1` makes GitHub Actions build it and attach it to a release.
-
-## Option B: build and run from source
-
-```
-git clone https://github.com/Scomage/ContactManage-public.git
-cd ContactManage-public
-dotnet build
-dotnet test --filter "Category!=UI"          # unit tests, about 10 seconds
-dotnet run --project src/ContactManage.App   # real contacts
-dotnet run --project src/ContactManage.App -- --demo    # sample data, touches nothing real
-```
-
+The program is not code-signed yet, so Windows SmartScreen shows "Windows protected your PC". Choose **More info**, then **Run anyway**.
 
 ## First run, step by step
 
@@ -74,24 +59,6 @@ Recommended first real run: merge two small folders into a **new folder** and ch
 1. Settings > Apps > ContactManage > Uninstall (or run `uninstall.ps1` in the install folder). If you copied the app by hand instead, delete its folder.
 2. Remove saved passwords: use **Forget saved passwords** in the app first, or run `cmdkey /list` and delete entries starting with `ContactManage:` (`cmdkey /delete:<target>`).
 3. Delete `%LOCALAPPDATA%\ContactManage\` (keep `Backups` if you may need to restore).
-
-## Quick checks
-
-```
-dotnet build                     # 0 warnings, 0 errors expected
-dotnet test                      # 219 unit + 8 UI tests; the UI tests open real windows for about 20 seconds
-dotnet test --filter "Category!=UI"
-```
-
-Test a server without the app, in its own console window (it hides the password as you type):
-
-```
-dotnet run --project tools/CardDavSpike                      # read-only: capabilities, address books, counts
-dotnet run --project tools/CardDavSpike -- --write-test      # creates, fills and deletes a scratch address book
-dotnet run --project tools/CardDavSpike -- --single-contact-test   # same idea for a server with one fixed address book (AOL)
-```
-
-`--restore-missing <backup.vcf>` adds back the contacts a backup holds and the book lacks (counts only, asks for YES, never deletes). All of these ask for the password in their own console window.
 
 ## Security notes
 

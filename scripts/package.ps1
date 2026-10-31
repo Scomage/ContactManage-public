@@ -22,6 +22,9 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 Copy-Item (Join-Path $PSScriptRoot "installer\*") $stage
 Set-Content (Join-Path $stage "version.txt") $Version -Encoding ascii
 Copy-Item (Join-Path $root "docs\QUICKSTART.md") (Join-Path $stage "README-first.md")
+# Same page as a PDF, easier to read; rebuild docs\README-first.pdf when QUICKSTART.md changes.
+$pdf = Join-Path $root "docs\README-first.pdf"
+if (Test-Path $pdf) { Copy-Item $pdf $stage }
 
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
 Remove-Item $stage -Recurse -Force
