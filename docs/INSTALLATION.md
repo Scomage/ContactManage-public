@@ -11,8 +11,8 @@
 ## Build and run from source
 
 ```
-git clone https://github.com/Scomage/ContactManage.git
-cd ContactManage
+git clone https://github.com/Scomage/ContactManage-public.git
+cd ContactManage-public
 dotnet build
 dotnet test
 dotnet run --project src/ContactManage.App                 # real contacts

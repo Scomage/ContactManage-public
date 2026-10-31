@@ -69,4 +69,4 @@ Requires the .NET 9 SDK and Windows 10 or later. More in `docs/INSTALLATION.md`.
 
 ## Repository
 
-Source: https://github.com/Scomage/ContactManage.
+Source: https://github.com/Scomage/ContactManage-public.

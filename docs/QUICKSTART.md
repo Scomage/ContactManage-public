@@ -16,7 +16,7 @@ The server address is read from IceWarp's own account list, so you never type it
 
 ## Option A: install the package (no SDK on the target PC)
 
-1. Download `ContactManage-<version>-win-x64.zip` from the repository's **Releases** page (https://github.com/Scomage/ContactManage/releases), or get it from whoever built it.
+1. Download `ContactManage-<version>-win-x64.zip` from the repository's **Releases** page (https://github.com/Scomage/ContactManage-public/releases), or get it from whoever built it.
 2. Unzip it anywhere, then double-click **Install.cmd**. It installs for the current user only (no administrator rights) to `%LOCALAPPDATA%\Programs\ContactManage`, adds a Start menu shortcut and an entry in Settings > Apps.
 3. Start **ContactManage** from the Start menu. Installing a newer package over an old one updates it; your data in `%LOCALAPPDATA%\ContactManage` is kept.
 
@@ -27,8 +27,8 @@ To build the package yourself: `powershell -File scripts\package.ps1 -Version 1.
 ## Option B: build and run from source
 
 ```
-git clone https://github.com/Scomage/ContactManage.git
-cd ContactManage
+git clone https://github.com/Scomage/ContactManage-public.git
+cd ContactManage-public
 dotnet build
 dotnet test --filter "Category!=UI"          # unit tests, about 10 seconds
 dotnet run --project src/ContactManage.App   # real contacts
