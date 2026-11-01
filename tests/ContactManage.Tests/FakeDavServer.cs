@@ -21,7 +21,8 @@ public sealed class FakeDavServer : HttpMessageHandler
     public bool FailPuts { get; set; }
     public bool ForbidMkcol { get; set; }
     public bool RejectQueries { get; set; }
-    public bool FoldSameNameAndEmail { get; set; }                   // like AOL: a new entry with an existing name and email updates that entry
+    public bool DropNewPuts { get; set; }                            // answers 201 but stores nothing
+    public bool FoldSameNameAndEmail { get; set; }                  // like AOL: a new entry with an existing name and email updates that entry
     public bool OmitMkcolFromAllow { get; set; }                   // like AOL, which lists no MKCOL
 
     public FakeDavServer()
@@ -106,6 +107,7 @@ public sealed class FakeDavServer : HttpMessageHandler
                         Content = new StringContent("<d:error xmlns:d=\"DAV:\" xmlns:c=\"urn:ietf:params:xml:ns:carddav\"><c:no-uid-conflict/></d:error>", Encoding.UTF8, "application/xml"),
                     };
                 var exists = Resources.ContainsKey(path);
+                if (DropNewPuts && !exists) return new HttpResponseMessage(HttpStatusCode.Created);
                 if (FoldSameNameAndEmail && !exists)
                 {
                     // Like AOL: an entry with the name and email of an existing one is that entry, updated; nothing new is stored.

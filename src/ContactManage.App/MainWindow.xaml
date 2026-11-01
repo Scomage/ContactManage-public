@@ -31,6 +31,10 @@
                         Margin="0,0,8,0" Click="Restore_Click" IsEnabled="{Binding UseReal}"/>
                 <Button AutomationProperties.AutomationId="AddGoogleButton" Content="Add Google account" Padding="8,2"
                         Click="AddGoogle_Click" IsEnabled="{Binding UseReal}"/>
+                <TextBlock Text="Phone region:" VerticalAlignment="Center" Margin="16,0,6,0" ToolTip="{Binding ElementName=PhoneRegionBox, Path=ToolTip}"/>
+                <ComboBox AutomationProperties.AutomationId="PhoneRegionBox" x:Name="PhoneRegionBox" Width="190"
+                          SelectionChanged="PhoneRegion_Changed"
+                          ToolTip="The country a phone number without a country code is read as, to decide which numbers are the same. The numbers themselves are never changed."/>
             </StackPanel>
         </StackPanel>
         <TextBlock Grid.Row="1" Margin="0,4,0,10" Foreground="Gray" TextWrapping="Wrap"

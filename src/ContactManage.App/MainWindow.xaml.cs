@@ -57,6 +57,7 @@ public partial class MainWindow : Window
         var args = Environment.GetCommandLineArgs();
         _settingsPath = SettingsPath(args);
         _settings = AppSettings.Load(_settingsPath);
+        ShowPhoneRegion();
         var plan = StartPlan.Decide(_settings.Start, _vm.MailProgramName is not null, args.Contains("--demo"), args.Contains("--start-screen"));
         var mode = plan.Mode;
         if (plan.ShowScreen && !ChooseSource(out mode))
@@ -65,6 +66,24 @@ public partial class MainWindow : Window
             return;
         }
         await ApplyModeAsync(mode);
+    }
+
+    private bool _showingRegion;
+
+    private void ShowPhoneRegion()
+    {
+        _showingRegion = true; // filling the box is not a choice by the user
+        PhoneRegionBox.ItemsSource = PhoneRegions.All();
+        PhoneRegionBox.SelectedItem = PhoneRegions.All().FirstOrDefault(r => r.Code == _settings.PhoneRegion);
+        _showingRegion = false;
+    }
+
+    private void PhoneRegion_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_showingRegion || PhoneRegionBox.SelectedItem is not PhoneRegion region) return;
+        _settings.PhoneRegion = region.Code;
+        try { _settings.Save(_settingsPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* the choice just is not remembered */ }
     }
 
     /// <summary>Shows the screen and remembers the answer when asked to. Returns false when the user closed it.</summary>
@@ -281,7 +300,8 @@ public partial class MainWindow : Window
             }
 
             _vm.StatusText = $"Looking for duplicates among {all.Count:N0} contacts...";
-            var result = await Task.Run(() => new MergeEngine().Merge(all));
+            var normalizer = new Normalizer(_settings.PhoneRegion);
+            var result = await Task.Run(() => new MergeEngine(normalizer).Merge(all));
             Remembered.Apply(result);
 
             var review = new ReviewWindow(result, _vm.UseDemo) { Owner = this };
@@ -349,7 +369,7 @@ public partial class MainWindow : Window
             var restoreQuestion = $"Replace {now} in {target.Name} ({target.AccountName}) with the {contacts.Count:N0} contacts from the backup \"{file.Label}\"?\n\n" +
                                   $"The folder's present contents are saved first, in\n{BackupRoot}\n\n" +
                                   (isLocal ? "Contacts that are still in the folder are updated in place; the others are added again (without their pictures)." : "Restored contacts are written as new entries.") +
-                                  (isLocal ? LocalOnlyWarning([target]) : "");
+                                  (isLocal ? LocalOnlyWarning([target]) : "") + (_vm.UseDemo ? "" : LabelLoss.Warning([target], contacts));
             if (isLocal
                     ? MessageBox.Show(this, restoreQuestion, "ContactManage", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes
                     : !Confirm(restoreQuestion))
@@ -427,7 +447,8 @@ public partial class MainWindow : Window
                 break;
 
             case DestinationKind.NewFolder:
-                if (!Confirm($"Create a new folder \"{choice.Name}\" in {choice.Account!.AccountName} and put {final.Count:N0} contacts in it?")) return false;
+                if (!Confirm($"Create a new folder \"{choice.Name}\" in {choice.Account!.AccountName} and put {final.Count:N0} contacts in it?" +
+                             (_vm.UseDemo ? "" : LabelLoss.Warning([choice.Account], final)))) return false;
                 _vm.StatusText = $"Creating {choice.Name}...";
                 var created = await Store.CreateFolderAsync(choice.Account, choice.Name!, final);
                 Info(Describe([created]) + "\n\n" + summary.Text +
@@ -467,7 +488,8 @@ public partial class MainWindow : Window
             "They are deleted from the folders above. Any of them that live in a folder you are not replacing stay where they are.";
         var localTargets = targets.Where(t => t.Kind == FolderKind.Local).ToList();
         var localWarning = _vm.UseDemo || localTargets.Count == 0 ? "" : LocalOnlyWarning(localTargets);
-        var question = $"Replace the contents of these folders with the {final.Count:N0} merged contacts?\n\n{names}\n\n{backupNote}{removalNote}{localWarning}";
+        var labelNote = _vm.UseDemo ? "" : LabelLoss.Warning(targets, final);
+        var question = $"Replace the contents of these folders with the {final.Count:N0} merged contacts?\n\n{names}\n\n{backupNote}{removalNote}{localWarning}{labelNote}";
         if (localWarning.Length > 0
                 ? MessageBox.Show(this, question, "ContactManage", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes
                 : !Confirm(question)) return false;

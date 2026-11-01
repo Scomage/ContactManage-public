@@ -196,24 +196,64 @@ public sealed class CardDavContactStore(
             keep.Add(survivor.RemoteId!);
             toUpdate.Add((c, survivor));
         }
-        var toRemove = existing.Where(h => !keep.Contains(h)).ToList();
 
         // 1. new contacts, 2. check they really are there, 3. merged contacts over their originals, 4. only now the deletions:
         // if anything fails or looks wrong before step 4, no contact has been lost.
         var written = await PutAllAsync(session.Client, book, toAdd, ct).ConfigureAwait(false);
+        var folded = 0;
+        var foldedInto = 0;
         if (written.Count > 0)
         {
             var listed = (await session.Client.ListHrefsAsync(book, ct).ConfigureAwait(false)).Select(PathOf).ToHashSet(StringComparer.Ordinal);
-            var missing = written.Count(w => !listed.Contains(PathOf(w.AbsolutePath)));
-            if (missing > 0)
-                throw new CardDavException($"The server accepted {missing:N0} of the {written.Count:N0} new contacts but did not store them separately (it treats a contact with " +
-                    "the same name and email as one it already has). Nothing was deleted.");
+            var missing = written.Where(w => !listed.Contains(PathOf(w.Uri.AbsolutePath))).Select(w => w.Contact).ToList();
+            if (missing.Count > 0)
+            {
+                // The server (AOL) took these as updates of contacts it already had, which is what a restore of a backup into the
+                // folder it came from does. Those contacts now hold the new data, so they stay; but only when every one of them can
+                // be matched to a contact that was there, otherwise something else happened and nothing is deleted.
+                var matches = await MatchFoldedAsync(session.Client, book, missing, existing, ct).ConfigureAwait(false)
+                    ?? throw new CardDavException($"The server accepted {missing.Count:N0} of the {written.Count:N0} new contacts but did not store them separately, " +
+                        "and they could not be matched to contacts the folder already had. Nothing was deleted.");
+                folded = missing.Count;
+                foldedInto = matches.Count(keep.Add);
+            }
         }
+        var toRemove = existing.Where(h => !keep.Contains(h)).ToList();
         await ForEachAsync(toUpdate, (u, token) => session.Client.PutAsync(new Uri(book, u.Survivor.RemoteId!), VCard.Write(u.Contact, u.Survivor.Uid), token), ct).ConfigureAwait(false);
         await ForEachAsync(toRemove, (href, token) => session.Client.DeleteAsync(new Uri(book, href), token), ct).ConfigureAwait(false);
 
         var after = await session.Client.CountAsync(book, ct).ConfigureAwait(false);
-        return new WriteReport(folder.Name, toAdd.Count, toRemove.Count, untouched, after, toUpdate.Count);
+        var note = folded == 0 ? null
+            : $"{folded:N0} {(folded == 1 ? "contact has" : "contacts have")} the same name and email as {(folded == 1 ? "one" : "ones")} this server already had. " +
+              "The server identifies a contact by name and email, so those were updated instead of added.";
+        return new WriteReport(folder.Name, toAdd.Count - folded, toRemove.Count, untouched, after, toUpdate.Count + foldedInto, note);
+    }
+
+    /// <summary>
+    /// For contacts the server folded into existing ones, the address of the existing contact each went into (a contact with
+    /// the same name and a shared email). Null when any of them has no such contact.
+    /// </summary>
+    private static async Task<List<string>?> MatchFoldedAsync(CardDavClient client, Uri book, IReadOnlyList<Contact> folded, IReadOnlyList<string> existing, CancellationToken ct)
+    {
+        var normalizer = new Normalizer();
+        var existingSet = existing.ToHashSet(StringComparer.Ordinal);
+        var now = new List<(string Href, string Name, HashSet<string?> Emails)>();
+        foreach (var r in await client.ReadAllAsync(book, ct).ConfigureAwait(false))
+        {
+            if (!existingSet.Contains(r.Href)) continue;
+            foreach (var c in VCard.ParseAll(r.VCard)) now.Add((r.Href, normalizer.NameKey(c), c.Emails.Select(normalizer.Email).ToHashSet()));
+        }
+
+        var hrefs = new List<string>();
+        foreach (var c in folded)
+        {
+            var name = normalizer.NameKey(c);
+            var emails = c.Emails.Select(normalizer.Email).Where(e => e is not null).ToList();
+            var hit = now.FirstOrDefault(n => n.Name == name && emails.Any(n.Emails.Contains));
+            if (hit.Href is null) return null;
+            hrefs.Add(hit.Href);
+        }
+        return hrefs;
     }
 
     /// <summary>An address as comparable text: without host, percent-escapes undone, no trailing slash.</summary>
@@ -226,10 +266,10 @@ public sealed class CardDavContactStore(
             async (item, token) => await action(item, token).ConfigureAwait(false));
 
     /// <summary>Writes the contacts as new entries and returns the address of each.</summary>
-    private static async Task<IReadOnlyList<Uri>> PutAllAsync(CardDavClient client, Uri book, IEnumerable<Contact> contacts, CancellationToken ct)
+    private static async Task<IReadOnlyList<(Contact Contact, Uri Uri)>> PutAllAsync(CardDavClient client, Uri book, IEnumerable<Contact> contacts, CancellationToken ct)
     {
-        var made = new ConcurrentBag<Uri>();
-        await ForEachAsync(contacts, async (c, token) => made.Add(await PutContactAsync(client, book, c, token).ConfigureAwait(false)), ct).ConfigureAwait(false);
+        var made = new ConcurrentBag<(Contact, Uri)>();
+        await ForEachAsync(contacts, async (c, token) => made.Add((c, await PutContactAsync(client, book, c, token).ConfigureAwait(false))), ct).ConfigureAwait(false);
         return made.ToList();
     }
 

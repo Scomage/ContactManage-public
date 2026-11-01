@@ -23,7 +23,7 @@ AOL contacts are read and written over **CardDAV** at `https://carddav.aol.com/.
 
 AOL recognises a contact by its **name and email**. A PUT to a new address whose vCard has the name and email of an existing contact is answered with 204 and **updates that existing contact**; the new address does not exist afterwards (GET gives 404). The same UID or the same email with another name stays separate, and a phone added to such a PUT lands on the existing contact. The first version of Replace wrote a merged contact under a new address and then deleted every old member, which deleted the merged contact too (54 minus 8 members = 46). Restoring from a backup repeated the effect, because the backup's contacts matched the ones already there and the delete step then removed them (the counts went 54, 46, 50, 0).
 
-The fix (in `CardDavContactStore.ReplaceContactsAsync`): a merged contact is written over the address of one of its own originals (keeping that original's UID) and only the other originals are deleted; contacts that are written as new entries are checked in a second listing before any delete, and if one is missing the Replace stops with "Nothing was deleted". Tests: `FakeDavServer.FoldSameNameAndEmail` imitates AOL.
+The fix (in `CardDavContactStore.ReplaceContactsAsync`): a merged contact is written over the address of one of its own originals (keeping that original's UID) and only the other originals are deleted; contacts that are written as new entries are checked in a second listing before any delete, and if one is missing the Replace looks at what is in the book now: when each missing contact has a counterpart with the same name and a shared email, the server folded it into that contact (which now holds the new data), so that contact is kept and counted as updated; otherwise the Replace stops with "Nothing was deleted". Tests: `FakeDavServer.FoldSameNameAndEmail` imitates AOL.
 
 Recovery in that case: `tools/CardDavSpike --restore-missing <backup.vcf>` compares a backup with the book by name and email and adds only what is missing (counts printed, YES required, never deletes). It brought the account back to its 50 distinct contacts.
 
@@ -34,11 +34,11 @@ AOL can hold two contacts with the same name and email: four copies made in IceW
 - **New folder is not offered** for an account whose server does not list MKCOL in its `Allow` header (`CardDavClient.AllowsNewAddressBooksAsync`, `IContactStore.CanCreateFolder`). A server that does not say stays as before. If a create is refused anyway (403, 404 or 501) the message says the server probably allows only one address book.
 - The ways to save an AOL result are **Replace** the `Contacts` book (backup first, change log optional) or **save a vCard file**.
 - Merge, review, Keep separate, Remove and the backup work as for IceWarp.
-- **Restore from backup** on AOL: a backup's contacts are written as new entries, and AOL answers those whose name and email it already has as updates. The restore therefore adds what is missing and refreshes what matches, then stops with "Nothing was deleted" instead of deleting. For a clean additive restore run `tools/CardDavSpike -- --restore-missing <backup.vcf>` (it asks for YES and prints counts only).
+- **Restore from backup** on AOL: a backup's contacts are written as new entries, and AOL answers those whose name and email it already has as updates. The restore therefore adds what is missing, refreshes what matches, and removes the contacts that were not in the backup, then reports how many were updated instead of added. Fake-server tested only; try it once on a real account. `tools/CardDavSpike -- --restore-missing <backup.vcf>` (asks for YES, prints counts only) remains for an additive restore.
 
 ## Not yet done
 
-- Make the in-app restore finish without the "Nothing was deleted" stop on AOL.
+- Run the in-app restore on a real AOL account (built and tested against the fake server).
 - Write limits on large books (the test book had 54 contacts).
 - OAuth through Yahoo's commercial access programme.
 

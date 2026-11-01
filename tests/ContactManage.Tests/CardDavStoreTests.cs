@@ -171,20 +171,48 @@ public class CardDavStoreTests
     }
 
     [Fact]
-    public async Task A_new_contact_the_server_folds_into_an_existing_one_stops_the_replace_before_any_delete()
+    public async Task A_restore_finishes_when_the_server_folds_backup_contacts_into_the_ones_it_has()
     {
-        var server = ServerWith(("a.vcf", Card("u1", "Ann Lee", "ann@x.example")), ("c.vcf", Card("u3", "Cy Dee", "cy@x.example")));
+        // AOL: a backup's contacts are written as new entries, and those whose name and email the book already has become updates.
+        var server = ServerWith(("a.vcf", Card("u1", "Ann Lee", "ann@x.example")), ("c.vcf", Card("u3", "Cy Dee", "cy@x.example")), ("d.vcf", Card("u4", "Di Fox", "di@x.example")));
         server.FoldSameNameAndEmail = true;
         var (store, _) = StoreFor(server);
         var folder = Folder();
         await store.ReadContactsAsync(folder);
-        // Not read from this folder (like a restore from a backup), so it is written as a new entry; it folds into a.vcf.
-        var fromBackup = new[] { new Contact { DisplayName = "Ann Lee", Emails = { "ann@x.example" } } };
+        var fromBackup = new[]
+        {
+            new Contact { DisplayName = "Ann Lee", Emails = { "ANN@x.example" }, Phones = { "+12015550123" } },   // already there: folded, so updated
+            new Contact { DisplayName = "Bo Kim", Emails = { "bo@x.example" } },                                // not there: added
+            new Contact { DisplayName = "Di Fox", Emails = { "di@x.example" } },                                // already there: folded
+        };
 
-        var ex = await Assert.ThrowsAsync<CardDavException>(() => store.ReplaceContactsAsync(folder, fromBackup));
+        var report = await store.ReplaceContactsAsync(folder, fromBackup);
+
+        Assert.Equal(3, server.In(Contacts).Count());
+        Assert.Contains("FN:Bo Kim", string.Concat(server.Resources.Values));
+        Assert.DoesNotContain("FN:Cy Dee", string.Concat(server.Resources.Values));       // in the folder but not in the backup: replaced away
+        Assert.Contains("+12015550123", server.Resources[Contacts + "a.vcf"]);            // the existing contact took the backup's data
+        Assert.Equal(1, report.Added);
+        Assert.Equal(2, report.Updated);
+        Assert.Equal(1, report.Removed);
+        Assert.Equal(3, report.CountAfter);
+        Assert.True(report.Verified);
+        Assert.Contains("2 contacts have the same name and email", report.Note);
+    }
+
+    [Fact]
+    public async Task A_new_contact_the_server_did_not_store_and_did_not_fold_stops_the_replace_before_any_delete()
+    {
+        var server = ServerWith(("a.vcf", Card("u1", "Ann Lee", "ann@x.example")), ("c.vcf", Card("u3", "Cy Dee", "cy@x.example")));
+        server.DropNewPuts = true;
+        var (store, _) = StoreFor(server);
+        var folder = Folder();
+        await store.ReadContactsAsync(folder);
+        var fresh = new[] { new Contact { DisplayName = "Bo Kim", Emails = { "bo@x.example" } } };
+
+        var ex = await Assert.ThrowsAsync<CardDavException>(() => store.ReplaceContactsAsync(folder, fresh));
 
         Assert.Contains("Nothing was deleted", ex.Message);
-        Assert.Equal(2, server.In(Contacts).Count());
         Assert.DoesNotContain(server.Log, l => l.StartsWith("DELETE "));
     }
 

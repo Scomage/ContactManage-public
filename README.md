@@ -23,7 +23,7 @@ Try it without touching real contacts: choose **Try the demo** on the first scre
 ## Safety
 
 - Nothing is written until you confirm, and replacing a folder saves a backup first (`%LOCALAPPDATA%\ContactManage\Backups`).
-- New contacts are written before old ones are deleted, and CardDAV checks they really arrived first (if a server folded one into an existing contact, the save stops with "Nothing was deleted"). A merged contact is written over one of its own originals. A folder is never emptied, and counts are checked afterwards.
+- New contacts are written before old ones are deleted, and CardDAV checks they really arrived first (if a server folded one into a contact it already had, as AOL does for the same name and email, that contact is kept and counted as updated; if the folded contact cannot be matched, the save stops with "Nothing was deleted"). A merged contact is written over one of its own originals. A folder is never emptied, and counts are checked afterwards.
 - Passwords are asked for each session, sent only over https to their own server, and never logged. Saving one on your PC (Windows Credential Manager) is opt-in. Gmail uses Google's own sign-in in your browser; the app never sees your Google password.
 - Contacts are processed on your PC. Nothing is sent anywhere except to your own contact server.
 

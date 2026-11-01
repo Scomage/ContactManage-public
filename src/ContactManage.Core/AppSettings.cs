@@ -29,6 +29,15 @@ public sealed class AppSettings
 
     public StartPreference Start { get; set; } = StartPreference.Ask;
 
+    private string _phoneRegion = PhoneRegions.Default;
+
+    /// <summary>Country (two-letter code) that a phone number without a country code is read as when contacts are compared. US unless the user changes it.</summary>
+    public string PhoneRegion
+    {
+        get => _phoneRegion;
+        set => _phoneRegion = PhoneRegions.Normalize(value);
+    }
+
     public static string DefaultPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ContactManage", "settings.json");
 
