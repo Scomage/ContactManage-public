@@ -4,9 +4,9 @@ A Windows app that combines contact folders from your mail client into one clean
 
 You choose the folders, ContactManage finds the duplicates, you settle anything it is unsure about, and then it saves the result: replace the folders, create a new one, or export a vCard file.
 
-**No mail program needed for Gmail:** if you only use Gmail in the browser, start the app, choose **Online account** and sign in with your Google account (see `docs/GMAIL.md`, "Gmail without a mail program"). Where a mail program is installed, a first screen asks which you want and can remember the answer.
+**No mail program needed for Gmail or Microsoft:** if you only use Gmail or Outlook.com in the browser, start the app, choose **Online account** and press **Add Google account** or **Add Microsoft account** (see `docs/GMAIL.md`, "Gmail without a mail program", and `docs/MICROSOFT.md`). Where a mail program is installed, a first screen asks which you want and can remember the answer.
 
-Supported today: **IceWarp Desktop Client** (its CardDAV accounts, including **AOL** with an app password; see `docs/AOL.md`) and **Gmail** (sign in with Google; see `docs/GMAIL.md`). Outlook, Thunderbird and eM Client are planned.
+Supported today: **IceWarp Desktop Client** (its CardDAV accounts, including **AOL** with an app password; see `docs/AOL.md`) **Gmail** (sign in with Google; see `docs/GMAIL.md`) and **Microsoft accounts** (Outlook.com, Hotmail, Microsoft 365; reading and writing a new folder are confirmed on a real Outlook.com account, Replace is tested against a simulated service only; see `docs/MICROSOFT.md`). Thunderbird and eM Client are planned.
 
 ## What it does
 
@@ -24,7 +24,7 @@ Try it without touching real contacts: choose **Try the demo** on the first scre
 
 - Nothing is written until you confirm, and replacing a folder saves a backup first (`%LOCALAPPDATA%\ContactManage\Backups`).
 - New contacts are written before old ones are deleted, and CardDAV checks they really arrived first (if a server folded one into a contact it already had, as AOL does for the same name and email, that contact is kept and counted as updated; if the folded contact cannot be matched, the save stops with "Nothing was deleted"). A merged contact is written over one of its own originals. A folder is never emptied, and counts are checked afterwards.
-- Passwords are asked for each session, sent only over https to their own server, and never logged. Saving one on your PC (Windows Credential Manager) is opt-in. Gmail uses Google's own sign-in in your browser; the app never sees your Google password.
+- Passwords are asked for each session, sent only over https to their own server, and never logged. Saving one on your PC (Windows Credential Manager) is opt-in. Gmail and Microsoft accounts use their own sign-in in your browser; the app never sees those passwords, only a sign-in token kept in Credential Manager.
 - Contacts are processed on your PC. Nothing is sent anywhere except to your own contact server.
 
 See `docs/SECURITY.md` for the full list of rules.
@@ -32,6 +32,7 @@ See `docs/SECURITY.md` for the full list of rules.
 ## Known limits
 
 - Gmail: tick My Contacts **or** a single label, one row per Google account (Next stays disabled otherwise). Google contact photos and starred status of merged-away duplicates are not carried over. While the Google app is in Testing status, the Google sign-in expires every 7 days.
+- Microsoft: an Outlook contact holds only 3 emails, 5 phones and 3 addresses, so a merge may not fit everything (the confirmation says how many values are left out; they stay in the backup). Photos are not read or written. Setup needs the app registration and `microsoft-client.json` (`docs/MICROSOFT.md`). Outlook.com's own vCard import can put emails into Notes; import contacts as CSV instead.
 - AOL: needs an app password; it has a single address book, so "new folder" is not offered (Replace with backup, or a vCard file). Tested on a real account: read, Replace with merged duplicates, restore.
 - IceWarp Desktop Client keeps its own copy of Gmail and AOL folders and only shows new counts after you exit and start it again.
 - IceWarp Local Folders (contacts kept on this PC only, no server copy) can be read, merged and written back in place. Before writing, the app saves a vCard backup and a copy of IceWarp's contact database files, and warns you that nothing on a server can bring the contacts back. IceWarp Desktop Client may stay open and normally shows the change straight away (if not, exit and start it again).
@@ -61,6 +62,7 @@ Requires the .NET 9 SDK and Windows 10 or later. More in `docs/INSTALLATION.md`.
 | `SCOPE.md` | Requirements, decisions, risks and milestones |
 | `docs/ARCHITECTURE.md` | Projects, key types, data flow, merge rules |
 | `docs/GMAIL.md` | How Gmail is read and written (Google People API), sign-in, limits |
+| `docs/MICROSOFT.md` | Microsoft accounts through Microsoft Graph: app registration, what an Outlook contact can hold, open questions |
 | `docs/AOL.md` | AOL contacts over CardDAV with an app password: what the server allows, test results |
 | `docs/ICEWARP.md` | How IceWarp stores accounts and folders, and how the CardDAV server behaves |
 | `docs/QUICKSTART.md` | One-page install and setup for technical users |

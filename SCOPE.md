@@ -1,6 +1,6 @@
 # ContactManage – Project Scope
 
-Date: 2026-10-22, updated 2026-10-28 · Status: v1.0.1 released to colleagues (IceWarp, Gmail and AOL working; see CLAUDE.md for current status and next steps)
+Date: 2026-10-22, updated 2026-11-03 · Status: v1.0.7 released (IceWarp, Gmail, AOL and Local Folders working; Microsoft accounts built and read/new-folder confirmed on a real Outlook.com account, not yet released; see CLAUDE.md for current status and next steps)
 
 ## 1. Purpose
 
@@ -17,7 +17,7 @@ Goals:
 
 | Decision | Choice |
 | --- | --- |
-| v1 mail client | **IceWarp Desktop Client** (the default mail client on the dev PC), reading its IceWarp and AOL CardDAV accounts. **Gmail** is added through Google's People API (`docs/GMAIL.md`); AOL uses an app password (`docs/AOL.md`) |
+| v1 mail client | **IceWarp Desktop Client** (the default mail client on the dev PC), reading its IceWarp and AOL CardDAV accounts. **Gmail** is added through Google's People API (`docs/GMAIL.md`), **Microsoft accounts** through Microsoft Graph (`docs/MICROSOFT.md`); AOL uses an app password (`docs/AOL.md`) |
 | Language / UI | **C# on .NET 9, WPF** (MVVM) |
 | Distribution | Self-contained win-x64 build with an installer; deployable to other PCs |
 | Audience | Colleagues first; public release is a future goal (design for it now) |
@@ -37,13 +37,13 @@ Goals:
 
 | In scope (v1) | Out of scope (v1) |
 | --- | --- |
-| Detect installed mail clients; IceWarp (with its AOL account) and Gmail supported | Continuous background sync |
+| Detect installed mail clients; IceWarp (with its AOL account), Gmail and Microsoft accounts supported | Continuous background sync |
 | List contact folders with counts | Calendar, email, tasks |
 | Merge selected folders into one list | macOS, Linux, mobile |
 | Match duplicates by name, email, phone | Server or multi-user hosting |
 | Field-level conflict resolution | Fuzzy/AI matching beyond name, email, phone |
 | Replace folders or create new ones | Contact photos beyond pass-through (stretch) |
-| Backup, change log, restore from backup | Clients other than IceWarp, AOL and Gmail, except vCard fallback |
+| Backup, change log, restore from backup | Clients other than IceWarp, AOL, Gmail and Microsoft, except vCard fallback |
 | vCard/CSV import and export (universal fallback) | Outlook, Thunderbird, eM Client adapters (phase 2) |
 
 ## 5. Functional requirements (six-step wizard)

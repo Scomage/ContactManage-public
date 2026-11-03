@@ -2,7 +2,7 @@ namespace ContactManage.Core;
 
 /// <summary>
 /// The source used when the user works with online accounts only. It reads no mail program, so it lists no folders: the accounts
-/// (Gmail) are added to the list by their own store once the user has signed in.
+/// (Gmail, Microsoft) are added to the list by their own store once the user has signed in.
 /// </summary>
 public sealed class OnlineContactSource : IContactSource
 {

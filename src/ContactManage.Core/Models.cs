@@ -13,6 +13,8 @@ public enum FolderKind
     GmailSignIn,
     Google,
     Local,
+    /// <summary>A contact folder of a Microsoft account (Outlook.com, Hotmail, Microsoft 365) read through Microsoft Graph.</summary>
+    Microsoft,
 }
 
 /// <summary>A contact folder as shown in the selection list.</summary>
@@ -36,12 +38,12 @@ public sealed record ContactFolder(
     public static string AccountKeyOf(string folderId) => folderId.Contains(':') ? folderId[..folderId.IndexOf(':')] : folderId;
 
     /// <summary>CardDAV folders, Gmail through its API and IceWarp's Local Folders can be read; IceWarp's cached copy of a Google account cannot.</summary>
-    public bool IsReadable => Kind is FolderKind.CardDav or FolderKind.GmailApi or FolderKind.GmailLabel or FolderKind.Local;
+    public bool IsReadable => Kind is FolderKind.CardDav or FolderKind.GmailApi or FolderKind.GmailLabel or FolderKind.Local or FolderKind.Microsoft;
 
-    public bool CanWrite => Kind is FolderKind.CardDav or FolderKind.GmailApi or FolderKind.GmailLabel or FolderKind.Local && IsWritable;
+    public bool CanWrite => Kind is FolderKind.CardDav or FolderKind.GmailApi or FolderKind.GmailLabel or FolderKind.Local or FolderKind.Microsoft && IsWritable;
 
-    /// <summary>A Gmail account has one list plus labels, so a "new folder" is only offered for CardDAV accounts.</summary>
-    public bool CanCreateFolder => Kind == FolderKind.CardDav && IsWritable;
+    /// <summary>A Gmail account has one list plus labels, so a "new folder" is only offered for CardDAV and Microsoft accounts.</summary>
+    public bool CanCreateFolder => Kind is FolderKind.CardDav or FolderKind.Microsoft && IsWritable;
 
     /// <summary>Labels are indented under their account's main list; ticking one works on just that label's contacts. Only the sign-in row has no box.</summary>
     public bool HasCheckbox => Kind != FolderKind.GmailSignIn;

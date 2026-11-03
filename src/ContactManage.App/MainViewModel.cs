@@ -139,10 +139,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     /// <summary>The line of advice above the folder list.</summary>
     public string HelpText => OnlineOnly
-        ? "Press Add Google account and sign in with your Google account in the browser. Its contacts and labels then show here, straight from Google. " +
-          "Select one list or label to clean up its duplicates (one row per Google account at a time)."
+        ? "Press Add Google account or Add Microsoft account and sign in in the browser. The account's contacts then show here, straight from Google or Microsoft. " +
+          "Select one list, label or folder to clean up its duplicates (one row per Google account at a time)."
         : "Select one folder to clean up its duplicates, or several folders to merge them. Counts are from the client's last sync. " +
-          "For a Gmail account use Add Google account: its contacts and labels then show here, straight from Google.";
+          "For a Gmail or Microsoft account use Add Google account or Add Microsoft account: its contacts then show here, straight from the provider.";
 
     public bool IsBusy { get => _isBusy; set { Set(ref _isBusy, value); OnChanged(nameof(CanContinue)); } }
 

@@ -77,15 +77,15 @@ public class GoogleTests
     [Fact]
     public void The_pkce_challenge_matches_the_rfc_7636_example()
     {
-        Assert.Equal("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", GoogleAuth.Challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"));
+        Assert.Equal("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", ContactManage.Adapters.OAuthLoopback.Challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"));
     }
 
     [Fact]
     public void The_email_is_read_from_the_id_token_and_garbage_gives_null()
     {
-        Assert.Equal("jane@gmail.com", GoogleAuth.EmailFromIdToken(IdToken("jane@gmail.com")));
-        Assert.Null(GoogleAuth.EmailFromIdToken("not-a-token"));
-        Assert.Null(GoogleAuth.EmailFromIdToken(null));
+        Assert.Equal("jane@gmail.com", ContactManage.Adapters.OAuthLoopback.ClaimFromIdToken(IdToken("jane@gmail.com"), "email"));
+        Assert.Null(ContactManage.Adapters.OAuthLoopback.ClaimFromIdToken("not-a-token", "email"));
+        Assert.Null(ContactManage.Adapters.OAuthLoopback.ClaimFromIdToken(null, "email"));
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class GoogleTests
         Assert.Equal("CODE123", form["code"]);
         Assert.Equal("authorization_code", form["grant_type"]);
         Assert.Equal(q2["redirect_uri"], form["redirect_uri"]);
-        Assert.Equal(q2["code_challenge"], GoogleAuth.Challenge(form["code_verifier"]!)); // the verifier proves we started this sign-in
+        Assert.Equal(q2["code_challenge"], ContactManage.Adapters.OAuthLoopback.Challenge(form["code_verifier"]!)); // the verifier proves we started this sign-in
         Assert.DoesNotContain("RT", tokens.ToString()!);
     }
 

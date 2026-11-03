@@ -30,7 +30,10 @@
                 <Button AutomationProperties.AutomationId="RestoreBackupButton" Content="Restore from backup" Padding="8,2"
                         Margin="0,0,8,0" Click="Restore_Click" IsEnabled="{Binding UseReal}"/>
                 <Button AutomationProperties.AutomationId="AddGoogleButton" Content="Add Google account" Padding="8,2"
-                        Click="AddGoogle_Click" IsEnabled="{Binding UseReal}"/>
+                        Margin="0,0,8,0" Click="AddGoogle_Click" IsEnabled="{Binding UseReal}"/>
+                <Button AutomationProperties.AutomationId="AddMicrosoftButton" Content="Add Microsoft account" Padding="8,2"
+                        Click="AddMicrosoft_Click" IsEnabled="{Binding UseReal}"
+                        ToolTip="Outlook.com, Hotmail and Microsoft 365 contacts."/>
                 <TextBlock Text="Phone region:" VerticalAlignment="Center" Margin="16,0,6,0" ToolTip="{Binding ElementName=PhoneRegionBox, Path=ToolTip}"/>
                 <ComboBox AutomationProperties.AutomationId="PhoneRegionBox" x:Name="PhoneRegionBox" Width="190"
                           SelectionChanged="PhoneRegion_Changed"

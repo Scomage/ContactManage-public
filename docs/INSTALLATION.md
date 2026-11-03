@@ -4,7 +4,7 @@
 
 - Windows 10 or later (x64).
 - To build: .NET 9 SDK. To run a published self-contained build: nothing extra.
-- IceWarp Desktop Client installed and signed in to at least one contact account (or use Demo mode). Its accounts include IceWarp servers and AOL; a Gmail account is added inside ContactManage with **Add Google account**.
+- IceWarp Desktop Client installed and signed in to at least one contact account (or use Demo mode). Its accounts include IceWarp servers and AOL; a Gmail account is added inside ContactManage with **Add Google account**, a Microsoft account with **Add Microsoft account**.
 - Network access to your contact server. The app talks to it over https only.
 - AOL needs an **app password** (AOL account security settings), not the normal AOL password. See `AOL.md`.
 
@@ -29,7 +29,7 @@ The app is the project `src/ContactManage.App` (WPF, `net9.0-windows`).
 4. You are asked to sign in to each account involved. The user name defaults to the account name if it looks like an email address; otherwise type your login (usually your email address). The password is kept in memory only, unless you tick "Remember this password on this PC"; then Windows Credential Manager keeps it, encrypted for your Windows login, and the next run signs in automatically. "Forget saved passwords" on the main window removes them.
 5. Review duplicates, press Finish, choose a destination, confirm.
 
-Recommended first trial on real data: merge into a **new folder** and look at the result in IceWarp before using Replace. AOL and Gmail have no separate folders to create (AOL has one address book, Gmail one list plus labels), so there the first trial is a vCard file, or Replace with the backup on. The save screen greys out "new folder" for a server that cannot create one.
+Recommended first trial on real data: merge into a **new folder** and look at the result in IceWarp before using Replace. AOL and Gmail have no separate folders to create (AOL has one address book, Gmail one list plus labels), so there the first trial is a vCard file, or Replace with the backup on. A Microsoft account can create folders, so its first trial is a new folder. The save screen greys out "new folder" for a server that cannot create one.
 
 ## Where files go
 
@@ -53,7 +53,7 @@ This writes `dist\ContactManage-1.0.1-win-x64.zip` (about 62 MB): the self-conta
 
 **From GitHub:** pushing a tag such as `v1.0.1` runs `.github/workflows/release.yml`, which tests, builds the zip and attaches it to a GitHub release. The release has the zip twice: with the version in its name and as `ContactManage-win-x64.zip`, so `.../releases/latest/download/ContactManage-win-x64.zip` is a link that never changes. The zip is then on the Releases page.
 
-Gmail sign-in needs the Google client settings file `%LOCALAPPDATA%\ContactManage\google-client.json` on each PC. It holds the OAuth client secret and is not part of the package or the repository; hand it to colleagues separately (see `GMAIL.md`).
+Gmail sign-in needs the Google client settings file `%LOCALAPPDATA%\ContactManage\google-client.json` on each PC. It holds the OAuth client secret and is not part of the package or the repository; hand it to colleagues separately (see `GMAIL.md`). Microsoft sign-in needs `%LOCALAPPDATA%\ContactManage\microsoft-client.json` (`{ "client_id": "..." }`, no secret; see `MICROSOFT.md` for the one-time app registration).
 
 Unsigned executables trigger a SmartScreen warning ("More info", then "Run anyway"); code signing is planned before wider release. A proper MSI/MSIX installer is not planned for now.
 
@@ -78,7 +78,7 @@ The write test only touches an address book named `ContactManage-test-<random>` 
 | --- | --- |
 | "Mail client: IceWarp Desktop Client (No profile found...)" | IceWarp was never run or has no account. Start it and add an account. |
 | Folder list is empty or shows an error | The profile is locked or unreadable. Close and reopen IceWarp, press Refresh. |
-| Sign-in keeps failing | Use your full login (usually the email address). For AOL use the full AOL address and an **app password**, typed without spaces. Gmail does not use a typed password: it signs in through your browser. |
+| Sign-in keeps failing | Use your full login (usually the email address). For AOL use the full AOL address and an **app password**, typed without spaces. Gmail and Microsoft do not use a typed password: they sign in through your browser. |
 | "Could not find the folder ..." | The folder's cache path does not match the server. Press Refresh in IceWarp so it syncs, then try again. Shared folders are not confirmed to work yet. |
 | Counts differ from the server | The list shows IceWarp's last-synced counts. They are updated when IceWarp syncs. |
 | Changes not visible in IceWarp | IceWarp shows server changes after its next sync. |

@@ -101,11 +101,12 @@ public static class BackupCatalog
         folders.FirstOrDefault(f => string.Equals(VCardFiles.BackupLabel(f.AccountName, f.Name), file.Label, StringComparison.OrdinalIgnoreCase));
 }
 
-/// <summary>Sends each folder to the store that can handle its kind (CardDAV servers, Gmail), and combines their answers.</summary>
-public sealed class CompositeContactStore(IContactStore cardDav, IContactStore gmail, IContactStore? local = null) : IContactStore
+/// <summary>Sends each folder to the store that can handle its kind (CardDAV servers, Gmail, Microsoft, Local Folders), and combines their answers.</summary>
+public sealed class CompositeContactStore(IContactStore cardDav, IContactStore gmail, IContactStore? local = null, IContactStore? microsoft = null) : IContactStore
 {
     private IContactStore For(ContactFolder folder) =>
         folder.Kind is FolderKind.GmailApi or FolderKind.GmailLabel ? gmail
+        : folder.Kind == FolderKind.Microsoft && microsoft is not null ? microsoft
         : folder.Kind == FolderKind.Local && local is not null ? local
         : cardDav;
 
@@ -121,10 +122,13 @@ public sealed class CompositeContactStore(IContactStore cardDav, IContactStore g
 
     public async Task<FolderRefresh> RefreshFoldersAsync(IReadOnlyList<ContactFolder> folders, Func<ContactFolder, bool> mayContact, CancellationToken ct = default)
     {
-        // The Gmail store lists its own accounts (from the saved sign-ins), whatever the list holds; the CardDAV store gets its folders.
+        // The Gmail and Microsoft stores list their own accounts (from the saved sign-ins), whatever the list holds; the CardDAV store gets its folders.
         static bool IsGmail(ContactFolder f) => f.Kind is FolderKind.GmailApi or FolderKind.GmailLabel;
-        var dav = await cardDav.RefreshFoldersAsync(folders.Where(f => !IsGmail(f)).ToList(), mayContact, ct).ConfigureAwait(false);
+        static bool IsMicrosoft(ContactFolder f) => f.Kind == FolderKind.Microsoft;
+        var dav = await cardDav.RefreshFoldersAsync(folders.Where(f => !IsGmail(f) && !IsMicrosoft(f)).ToList(), mayContact, ct).ConfigureAwait(false);
         var mail = await gmail.RefreshFoldersAsync(folders.Where(IsGmail).ToList(), mayContact, ct).ConfigureAwait(false);
-        return new FolderRefresh(dav.Folders.Concat(mail.Folders).ToList(), dav.Problems.Concat(mail.Problems).ToList(), dav.AccountsAsked + mail.AccountsAsked);
+        var graph = microsoft is null ? new FolderRefresh([], [], 0) : await microsoft.RefreshFoldersAsync(folders.Where(IsMicrosoft).ToList(), mayContact, ct).ConfigureAwait(false);
+        return new FolderRefresh(dav.Folders.Concat(mail.Folders).Concat(graph.Folders).ToList(), dav.Problems.Concat(mail.Problems).Concat(graph.Problems).ToList(),
+            dav.AccountsAsked + mail.AccountsAsked + graph.AccountsAsked);
     }
 }

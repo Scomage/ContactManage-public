@@ -13,7 +13,7 @@ public partial class StartWindow : Window
         InitializeComponent();
         MailTile.IsEnabled = mailProgramName is not null;
         MailText.Text = mailProgramName is not null
-            ? $"Found: {mailProgramName}. Its contact folders, plus any Gmail account you add."
+            ? $"Found: {mailProgramName}. Its contact folders, plus any Gmail or Microsoft account you add."
             : "No supported mail program was found on this PC. Planned: Thunderbird, Outlook, eM Client.";
         RememberCheck.IsChecked = remembered;
     }

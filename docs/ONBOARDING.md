@@ -1,4 +1,4 @@
-# Giving the app to an outside user (Gmail, no mail program)
+# Giving the app to an outside user (Gmail or Microsoft, no mail program)
 
 One page for the administrator. Total time per person: about 10 minutes. The same steps also work for a colleague who has a mail program; they just pick **Online account** on the first screen.
 
@@ -24,6 +24,21 @@ What the person needs: a Windows 10 or 11 PC (64-bit), a Gmail address, the app 
 > 5. Tick **My Contacts** (or one label), press **Next**, review the duplicates and finish. A backup of your contacts is saved first; **Restore from backup** puts it back.
 >
 > Sign-in lasts 7 days. After that press **Add Google account** again. Nothing leaves your PC except the calls to Google. Tell me the exact message text if anything goes wrong.
+
+## Microsoft accounts (Outlook.com, Hotmail, 365)
+
+Same flow, fewer steps for the administrator: there is no test-user list and no weekly expiry (the sign-in is renewed each time it is used).
+
+1. Send the app as above, and send `microsoft-client.json` (`{ "client_id": "<the Application (client) ID>" }`; a public identifier with no secret, but still not for the repository). It goes in `%LOCALAPPDATA%\ContactManage`. The app registration itself is made once by the administrator (`MICROSOFT.md`).
+2. The person chooses **Online account**, presses **Add Microsoft account**, signs in in the browser and accepts the request to read and change their contacts.
+3. A work or school account may be stopped by its organisation until an administrator approves the app (the Entra portal warns that new multitenant apps need a verified publisher). Personal accounts are not affected. Not yet tried.
+
+| Symptom | Cause and fix |
+| --- | --- |
+| "Client file is missing" | `microsoft-client.json` is not in `%LOCALAPPDATA%\ContactManage`. |
+| Needs admin approval at sign-in | A work or school account whose organisation blocks user consent. An administrator approves the app, or the publisher is verified. |
+| Someone else's contacts, or all of a mailbox | An address added as an alias of an account is that account. |
+| Contacts from an Outlook.com vCard import have no emails | Their emails went into Notes. Re-import as CSV. |
 
 ## When something fails
 

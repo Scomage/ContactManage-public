@@ -7,6 +7,7 @@ using ContactManage.Adapters;
 using ContactManage.Adapters.CardDav;
 using ContactManage.Adapters.Google;
 using ContactManage.Adapters.IceWarp;
+using ContactManage.Adapters.MicrosoftGraph;
 using ContactManage.Core;
 
 namespace ContactManage.App;
@@ -22,6 +23,8 @@ public partial class MainWindow : Window
     private readonly GoogleAccounts _google;
     private readonly GoogleAccountNames _googleNames = new(GoogleAccountNames.DefaultPath);
     private readonly GooglePeopleStore _gmailStore;
+    private readonly MicrosoftAccounts _microsoft;
+    private readonly MicrosoftGraphStore _microsoftStore;
     private readonly IContactStore _store;
     private readonly NotDuplicates _notDuplicates =
         NotDuplicates.Load(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ContactManage", "not-duplicates.json"));
@@ -37,7 +40,9 @@ public partial class MainWindow : Window
         _cardDavStore = new CardDavContactStore(new SessionCredentials(this, _savedLogins).GetAsync, signedIn: _savedLogins.SignedIn);
         _google = new GoogleAccounts(vault, () => GoogleClientConfig.Load());
         _gmailStore = new GooglePeopleStore(_google, _googleNames);
-        _store = new CompositeContactStore(_cardDavStore, _gmailStore, new LocalFoldersContactStore(backupRoot: BackupRoot));
+        _microsoft = new MicrosoftAccounts(vault, () => MicrosoftClientConfig.Load());
+        _microsoftStore = new MicrosoftGraphStore(_microsoft);
+        _store = new CompositeContactStore(_cardDavStore, _gmailStore, new LocalFoldersContactStore(backupRoot: BackupRoot), _microsoftStore);
         DataContext = _vm;
         Closed += (_, _) => _cardDavStore.Dispose();
         Loaded += async (_, _) => await StartAsync();
@@ -112,7 +117,8 @@ public partial class MainWindow : Window
         {
             await _vm.LoadAsync();
             await LoadGmailAsync();
-            if (mode == SourceMode.Online && _vm.Folders.Count == 0) _vm.StatusText = "No account yet. Press Add Google account to sign in.";
+            await LoadMicrosoftAsync();
+            if (mode == SourceMode.Online && _vm.Folders.Count == 0) _vm.StatusText = "No account yet. Press Add Google account or Add Microsoft account to sign in.";
         }
         finally { SetBusy(false); }
     }
@@ -157,6 +163,7 @@ public partial class MainWindow : Window
             _vm.StatusText = "Asking the servers for their folders...";
             var refresh = await Store.RefreshFoldersAsync(_vm.Folders.Select(f => f.Folder).ToList(), f => !_vm.UseDemo && _savedLogins.Find(f) is not null);
             if (refresh.Folders.Any(f => f.Kind == FolderKind.GmailApi)) _vm.RemoveFolders(f => f.Kind == FolderKind.GmailLabel); // labels may have changed
+            DropMissingMicrosoftFolders(refresh);
             _vm.ApplyServerFolders(refresh);
             if (showProblems && refresh.Problems.Count > 0)
                 MessageBox.Show(this, "Some servers could not be asked, so their folders show the client's last numbers:\n\n" + string.Join("\n", refresh.Problems),
@@ -206,6 +213,27 @@ public partial class MainWindow : Window
         _vm.AddFolders(_vm.IceWarpGoogleNames.Where(n => !signedIn.Contains(n)).Select(n =>
             new ContactFolder($"gmail-pending-{n}:/myContacts", "My Contacts", "/myContacts", n, "Google", FolderKind.GmailSignIn,
                 IsWritable: false, ContactCount: null, DisplayPath: "Not signed in. Use Add Google account (top right).")));
+    }
+
+    /// <summary>Shows the folders of every signed-in Microsoft account. Needs the network, so it only asks when there is a saved sign-in.</summary>
+    private async Task LoadMicrosoftAsync()
+    {
+        if (_microsoft.SavedEmails().Count == 0) return;
+        _vm.StatusText = "Asking Microsoft for your contact folders...";
+        var refresh = await _microsoftStore.RefreshFoldersAsync([], _ => false);
+        DropMissingMicrosoftFolders(refresh);
+        _vm.AddFolders(refresh.Folders);
+        if (refresh.Problems.Count > 0)
+            MessageBox.Show(this, string.Join("\n", refresh.Problems), "ContactManage", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    /// <summary>A Microsoft folder that was deleted online disappears from the list, but only for accounts that answered.</summary>
+    private void DropMissingMicrosoftFolders(FolderRefresh refresh)
+    {
+        var answered = refresh.Folders.Where(f => f.Kind == FolderKind.Microsoft).Select(f => f.AccountKey).ToHashSet(StringComparer.Ordinal);
+        var listed = refresh.Folders.Select(f => f.Id).ToHashSet(StringComparer.Ordinal);
+        // Only the rows the account no longer has: removing and re-adding them all would untick what the user ticked.
+        if (answered.Count > 0) _vm.RemoveFolders(f => f.Kind == FolderKind.Microsoft && answered.Contains(f.AccountKey) && !listed.Contains(f.Id));
     }
 
     /// <summary>Puts a Gmail answer into the list; labels that were removed in Gmail disappear.</summary>
@@ -265,13 +293,43 @@ public partial class MainWindow : Window
         if (signedIn) await RefreshFromServersAsync(showProblems: false); // fills in the contact count
     }
 
+    private async void AddMicrosoft_Click(object sender, RoutedEventArgs e)
+    {
+        var signedIn = false;
+        SetBusy(true);
+        try
+        {
+            _vm.StatusText = "Finish signing in to Microsoft in your browser...";
+            await _microsoft.SignInAsync(url =>
+            {
+                try { Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true }); }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+                {
+                    throw new MicrosoftAuthException("Your browser could not be opened for the Microsoft sign-in: " + ex.Message);
+                }
+                return Task.CompletedTask;
+            });
+            signedIn = true;
+        }
+        catch (MicrosoftAuthException ex)
+        {
+            MessageBox.Show(this, ex.Message, "ContactManage", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            SetBusy(false);
+            _vm.ShowSelectionStatus();
+        }
+        if (signedIn) await RefreshFromServersAsync(showProblems: true); // lists the account's folders with their counts
+    }
+
     private void ForgetPasswords_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             var n = _savedLogins.ForgetAll();
             _googleNames.Clear();
-            _vm.RemoveFolders(f => f.Kind is FolderKind.GmailApi or FolderKind.GmailLabel);   // their sign-ins went with the other saved logins
+            _vm.RemoveFolders(f => f.Kind is FolderKind.GmailApi or FolderKind.GmailLabel or FolderKind.Microsoft);   // their sign-ins went with the other saved logins
             ShowGooglePlaceholders();
             MessageBox.Show(this, n == 0 ? "No saved passwords were found." : $"Removed {n} saved password{(n == 1 ? "" : "s")} from Windows Credential Manager.",
                 "ContactManage", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -317,7 +375,7 @@ public partial class MainWindow : Window
         {
             // The user closed a sign-in prompt.
         }
-        catch (Exception ex) when (ex is CardDavException or GoogleAuthException or HttpRequestException or TaskCanceledException or InvalidOperationException or IOException)
+        catch (Exception ex) when (ex is CardDavException or GoogleAuthException or MicrosoftAuthException or HttpRequestException or TaskCanceledException or InvalidOperationException or IOException)
         {
             var backup = _backupDir is null ? "" : $"\n\nBackups of the folders were saved in:\n{_backupDir}";
             MessageBox.Show(this, ex.Message + backup, "ContactManage", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -369,7 +427,7 @@ public partial class MainWindow : Window
             var restoreQuestion = $"Replace {now} in {target.Name} ({target.AccountName}) with the {contacts.Count:N0} contacts from the backup \"{file.Label}\"?\n\n" +
                                   $"The folder's present contents are saved first, in\n{BackupRoot}\n\n" +
                                   (isLocal ? "Contacts that are still in the folder are updated in place; the others are added again (without their pictures)." : "Restored contacts are written as new entries.") +
-                                  (isLocal ? LocalOnlyWarning([target]) : "") + (_vm.UseDemo ? "" : LabelLoss.Warning([target], contacts));
+                                  (isLocal ? LocalOnlyWarning([target]) : "") + (_vm.UseDemo ? "" : LabelLoss.Warning([target], contacts) + MicrosoftSlots.Warning([target], contacts));
             if (isLocal
                     ? MessageBox.Show(this, restoreQuestion, "ContactManage", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes
                     : !Confirm(restoreQuestion))
@@ -389,7 +447,7 @@ public partial class MainWindow : Window
         {
             // The user closed a sign-in prompt.
         }
-        catch (Exception ex) when (ex is CardDavException or GoogleAuthException or HttpRequestException or TaskCanceledException or InvalidOperationException or IOException)
+        catch (Exception ex) when (ex is CardDavException or GoogleAuthException or MicrosoftAuthException or HttpRequestException or TaskCanceledException or InvalidOperationException or IOException)
         {
             var backup = _backupDir is null ? "" : $"\n\nWhat was in the folder before is saved in:\n{_backupDir}";
             MessageBox.Show(this, ex.Message + backup, "ContactManage", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -448,7 +506,7 @@ public partial class MainWindow : Window
 
             case DestinationKind.NewFolder:
                 if (!Confirm($"Create a new folder \"{choice.Name}\" in {choice.Account!.AccountName} and put {final.Count:N0} contacts in it?" +
-                             (_vm.UseDemo ? "" : LabelLoss.Warning([choice.Account], final)))) return false;
+                             (_vm.UseDemo ? "" : LabelLoss.Warning([choice.Account], final) + MicrosoftSlots.Warning([choice.Account], final)))) return false;
                 _vm.StatusText = $"Creating {choice.Name}...";
                 var created = await Store.CreateFolderAsync(choice.Account, choice.Name!, final);
                 Info(Describe([created]) + "\n\n" + summary.Text +
@@ -488,7 +546,7 @@ public partial class MainWindow : Window
             "They are deleted from the folders above. Any of them that live in a folder you are not replacing stay where they are.";
         var localTargets = targets.Where(t => t.Kind == FolderKind.Local).ToList();
         var localWarning = _vm.UseDemo || localTargets.Count == 0 ? "" : LocalOnlyWarning(localTargets);
-        var labelNote = _vm.UseDemo ? "" : LabelLoss.Warning(targets, final);
+        var labelNote = _vm.UseDemo ? "" : LabelLoss.Warning(targets, final) + MicrosoftSlots.Warning(targets, final);
         var question = $"Replace the contents of these folders with the {final.Count:N0} merged contacts?\n\n{names}\n\n{backupNote}{removalNote}{localWarning}{labelNote}";
         if (localWarning.Length > 0
                 ? MessageBox.Show(this, question, "ContactManage", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes

@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 namespace ContactManage.Adapters.Google;
@@ -40,8 +38,8 @@ public sealed class GoogleAuth(GoogleClientConfig config, HttpMessageHandler? ha
     /// <param name="loginHint">Pre-fills the account on Google's page.</param>
     public async Task<GoogleTokens> SignInAsync(Func<Uri, Task> openBrowser, string? loginHint = null, TimeSpan? timeout = null, CancellationToken ct = default)
     {
-        var verifier = RandomUrlSafe(48);
-        var state = RandomUrlSafe(24);
+        var verifier = OAuthLoopback.RandomUrlSafe(48);
+        var state = OAuthLoopback.RandomUrlSafe(24);
 
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -54,7 +52,7 @@ public sealed class GoogleAuth(GoogleClientConfig config, HttpMessageHandler? ha
             ["response_type"] = "code",
             ["scope"] = Scopes,
             ["state"] = state,
-            ["code_challenge"] = Challenge(verifier),
+            ["code_challenge"] = OAuthLoopback.Challenge(verifier),
             ["code_challenge_method"] = "S256",
             ["access_type"] = "offline",   // asks for a refresh token
             ["prompt"] = "consent",        // makes Google issue it again even if the app was approved before
@@ -69,7 +67,7 @@ public sealed class GoogleAuth(GoogleClientConfig config, HttpMessageHandler? ha
         _ = opening.ContinueWith(_ => cts.Cancel(), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
         string code;
-        try { code = await WaitForCodeAsync(listener, state, cts.Token).ConfigureAwait(false); }
+        try { code = await OAuthLoopback.WaitForCodeAsync(listener, state, error => new GoogleAuthException($"Google sign-in was cancelled or refused ({error})."), cts.Token).ConfigureAwait(false); }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             if (opening.IsFaulted) await opening.ConfigureAwait(false); // the real reason: the browser could not be opened
@@ -104,7 +102,7 @@ public sealed class GoogleAuth(GoogleClientConfig config, HttpMessageHandler? ha
         var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
         JsonElement root;
-        try { root = JsonDocument.Parse(body).RootElement; }
+        try { using var doc = JsonDocument.Parse(body); root = doc.RootElement.Clone(); }
         catch (JsonException) { throw new GoogleAuthException($"Google's sign-in service gave an unreadable answer (HTTP {(int)resp.StatusCode})."); }
 
         if (!resp.IsSuccessStatusCode)
@@ -118,77 +116,8 @@ public sealed class GoogleAuth(GoogleClientConfig config, HttpMessageHandler? ha
         var access = root.GetProperty("access_token").GetString()!;
         var refresh = root.TryGetProperty("refresh_token", out var r) ? r.GetString() : existingRefresh;
         var expires = root.TryGetProperty("expires_in", out var x) ? x.GetInt32() : 3600;
-        var email = root.TryGetProperty("id_token", out var id) ? EmailFromIdToken(id.GetString()) : null;
+        var email = root.TryGetProperty("id_token", out var id) ? OAuthLoopback.ClaimFromIdToken(id.GetString(), "email") : null;
         var scope = root.TryGetProperty("scope", out var sc) ? sc.GetString() : null;
         return new GoogleTokens(access, refresh, DateTimeOffset.UtcNow.AddSeconds(expires - 60), email, scope);
-    }
-
-    /// <summary>Waits for Google's redirect and returns the authorization code. Stray requests (favicon, probes) are answered and ignored.</summary>
-    private static async Task<string> WaitForCodeAsync(TcpListener listener, string state, CancellationToken ct)
-    {
-        while (true)
-        {
-            using var client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
-            using var perConnection = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            perConnection.CancelAfter(TimeSpan.FromSeconds(10)); // a browser may open a connection and send nothing
-            try
-            {
-                var stream = client.GetStream();
-                var reader = new StreamReader(stream, Encoding.ASCII);
-                var requestLine = await reader.ReadLineAsync(perConnection.Token).ConfigureAwait(false);
-                while (!string.IsNullOrEmpty(await reader.ReadLineAsync(perConnection.Token).ConfigureAwait(false))) { } // skip headers
-
-                var parts = requestLine?.Split(' ');
-                if (parts is not { Length: >= 2 } || parts[0] != "GET") { await Respond(stream, 400, "Bad request."); continue; }
-                var query = System.Web.HttpUtility.ParseQueryString(new Uri("http://127.0.0.1" + parts[1]).Query);
-
-                if (query["error"] is { } error)
-                {
-                    await Respond(stream, 200, "Sign-in was cancelled. You can close this tab and return to ContactManage.");
-                    throw new GoogleAuthException($"Google sign-in was cancelled or refused ({error}).");
-                }
-                if (query["code"] is not { Length: > 0 } code) { await Respond(stream, 404, "Not found."); continue; }
-                if (query["state"] != state) { await Respond(stream, 400, "This sign-in answer does not belong to this session."); continue; }
-
-                await Respond(stream, 200, "You are signed in. You can close this tab and return to ContactManage.");
-                return code;
-            }
-            catch (Exception ex) when (ex is IOException or OperationCanceledException && !ct.IsCancellationRequested)
-            {
-                // a connection that stalled or dropped; wait for the real one
-            }
-        }
-    }
-
-    private static async Task Respond(NetworkStream stream, int status, string message)
-    {
-        var html = $"<!doctype html><html><head><meta charset=\"utf-8\"><title>ContactManage</title></head><body style=\"font-family:sans-serif;margin:3em\"><h2>ContactManage</h2><p>{WebUtility.HtmlEncode(message)}</p></body></html>";
-        var body = Encoding.UTF8.GetBytes(html);
-        var head = Encoding.ASCII.GetBytes($"HTTP/1.1 {status} {(status == 200 ? "OK" : "Error")}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n");
-        await stream.WriteAsync(head);
-        await stream.WriteAsync(body);
-        await stream.FlushAsync();
-    }
-
-    /// <summary>PKCE challenge: base64url of the SHA-256 of the verifier (RFC 7636).</summary>
-    internal static string Challenge(string verifier) => Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
-
-    private static string RandomUrlSafe(int bytes) => Base64Url(RandomNumberGenerator.GetBytes(bytes));
-
-    private static string Base64Url(byte[] data) => Convert.ToBase64String(data).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
-    /// <summary>The email claim of an id token. Not verified: the token came straight from Google over https, and only names the sign-in.</summary>
-    internal static string? EmailFromIdToken(string? idToken)
-    {
-        var parts = idToken?.Split('.');
-        if (parts is not { Length: 3 }) return null;
-        try
-        {
-            var payload = parts[1].Replace('-', '+').Replace('_', '/');
-            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
-            using var doc = JsonDocument.Parse(Convert.FromBase64String(payload));
-            return doc.RootElement.TryGetProperty("email", out var e) ? e.GetString() : null;
-        }
-        catch (Exception ex) when (ex is FormatException or JsonException) { return null; }
     }
 }

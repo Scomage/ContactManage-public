@@ -20,7 +20,7 @@
                 <StackPanel>
                     <TextBlock Text="Online account" FontSize="18" FontWeight="SemiBold"/>
                     <TextBlock Margin="0,8,0,0" TextWrapping="Wrap"
-                               Text="Gmail. Sign in with your Google account in the browser. No mail program is needed."/>
+                               Text="Gmail, or Outlook.com, Hotmail and Microsoft 365. Sign in in the browser. No mail program is needed."/>
                 </StackPanel>
             </Button>
 
