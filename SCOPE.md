@@ -1,6 +1,6 @@
 # ContactManage – Project Scope
 
-Date: 2026-10-22, updated 2026-11-03 · Status: v1.0.7 released (IceWarp, Gmail, AOL and Local Folders working; Microsoft accounts built and read/new-folder confirmed on a real Outlook.com account, not yet released; see CLAUDE.md for current status and next steps)
+Date: 2026-10-22, updated 2026-11-03 · Status: v1.0.8 released (IceWarp, Gmail, AOL, Local Folders and Microsoft accounts working; Microsoft read and new folder confirmed on a real Outlook.com account; see CLAUDE.md for current status and next steps)
 
 ## 1. Purpose
 
